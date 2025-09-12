@@ -37,6 +37,7 @@ def _select_ids(db, threshold, time, ids):
 
 
 class SelectorServer:
+
     # Interface
 
     @classmethod

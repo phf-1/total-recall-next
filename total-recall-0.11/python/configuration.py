@@ -8,6 +8,7 @@ import sys
 
 
 class Configuration:
+
     # Interface
 
     def read(self):

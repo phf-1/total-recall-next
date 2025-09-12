@@ -65,6 +65,7 @@ def _sort(nodes, edges):
 
 
 class GraphServer:
+
     # Interface
 
     @classmethod
