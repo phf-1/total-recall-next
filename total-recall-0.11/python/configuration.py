@@ -2,13 +2,10 @@
 
 # Context
 
-from pathlib import Path
-import argparse
 import sys
 
 
 class Configuration:
-
     # Interface
 
     def read(self):

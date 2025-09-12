@@ -9,7 +9,7 @@ from just import Just
 
 @dataclass
 class Maybe:
-    x: Nothing | Just
+    value: Nothing | Just
 
     # Interface
 

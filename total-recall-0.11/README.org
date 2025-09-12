@@ -76,7 +76,7 @@ searches for the matching ids and reciprocally.
 :END:
 **** specify
 
-Utils is a set of macros and functions
+Utils is a set of macros and functions.
 
 ***** reduce-while
 
@@ -652,13 +652,15 @@ Mark#failure() : Mark
 
 Mark#skip() : Mark
 
-Mark#string : Mark → String
-
-Mark#from_string : String → Mark | ⊥ :≡ λs.↓
+Mark#from_string : String → Mark :≡ λs.↓
 - match s
   - ":success" → Mark#success()
   - ":failure" → Mark#failure()
   - ":skip" → Mark#skip()
+
+Mark#string : Mark → String
+
+Mark#from_string(Mark#string(m)) = m
 
 **** build
 
@@ -670,7 +672,7 @@ Mark#from_string : String → Mark | ⊥ :≡ λs.↓
 :END:
 **** specify
 
-Time#mk : ISO8601UTC  → Time
+Time#mk : ISO8601UTC → Time
 
 time :≡ Time#mk s where s is an ISO8601 UTC string
 
@@ -686,9 +688,8 @@ time#string() : String :≡ s
 :END:
 **** specify
 
-Identifier#mk : String → Identifier | ⊥ :≡ λs.↓
-- if s is formatted as a UUID hex string, return Identifier#mk(s)
-- else, return ⊥
+Identifier#mk : String → Identifier :≡ λs.↓
+- if s is a UUID hex string, return Identifier#mk(s)
 
 Identifier#= : Identifier Identifier → Boolean
 
@@ -720,9 +721,8 @@ JsonProtocol#string : Any → String :≡ λx.x#json_string()
 :END:
 **** specify
 
-Error#mk : Any → Error | ⊥ :≡ λany.↓
+Error#mk : Any → Error :≡ λany.↓
 - if any implements JsonProtocol, return Error#mk(any)
-- else, return ⊥
 
 Instances of Error implement JsonProtocol.
 
@@ -736,9 +736,8 @@ Instances of Error implement JsonProtocol.
 :END:
 **** specify
 
-Ok#mk : Any → Ok | ⊥ :≡ λany.↓
+Ok#mk : Any → Ok :≡ λany.↓
 - if any implements JsonProtocol, return Ok#mk(any)
-- else, return ⊥
 
 Instances of Ok implement JsonProtocol.
 
@@ -792,9 +791,8 @@ Maybe :≡ Nothing | Just(Any)
 :END:
 **** specify
 
-Degraded#mk : Any → Degraded | ⊥ :≡ λany.↓
+Degraded#mk : Any → Degraded :≡ λany.↓
 - if any implements JsonProtocol, return Degraded#mk(any)
-- else, return ⊥
 
 Instances of Degraded implement JsonProtocol.
 
@@ -809,17 +807,24 @@ Instances of Degraded implement JsonProtocol.
 :END:
 **** specify
 
-ServerProtocol#start : Any Any → Any :≡ λserver,data.server#protocol_start data
+Server :≡ Any
 
-ServerProtocol#start(server data) = server where "=" means "is" in Python. After
-execution, server is ready to receive messages /i.e./ ServerProtocol#rcv(server msg)
-has a meaning.
+Message :≡ Any
 
-ServerProtocol#rcv : Any Any → Any :≡ λserver,msg.server#protocol_rcv msg
+Reply :≡ Any
 
-ServerProtocol#state : Any → Any :≡ λserver.server#protocol_state()
+State :≡ Any
 
-ServerProtocol#stop : Any → Nil :≡ λserver.server#protocol_stop()
+ServerProtocol#start : Server Message → None :≡ λserver,data.server#protocol_start data
+
+ServerProtocol#start(server data). After execution, server is ready to receive
+messages /i.e./ ServerProtocol#rcv(server msg) has a meaning.
+
+ServerProtocol#rcv : Server Message → Reply × State :≡ λserver,msg.server#protocol_rcv msg
+
+ServerProtocol#state : Server → State :≡ λserver.server#protocol_state()
+
+ServerProtocol#stop : Server → None :≡ λserver.server#protocol_stop()
 
 **** build
 
@@ -833,13 +838,13 @@ ServerProtocol#stop : Any → Nil :≡ λserver.server#protocol_stop()
 
 ServerState :≡ Any
 
-NextState :≡ State
+NextState :≡ ServerState
 
 Request :≡ Any
 
 Reply :≡ Any
 
-∀ r : Reply, r satisfies the JsonProtocol.
+Reply satisfies the JsonProtocol.
 
 Client :≡ ServerState Request → Ok(Request) | Error(String)
 
@@ -923,7 +928,7 @@ loop#start : Any → Nil :≡ λdata.↓
     - state :≡ next-state
   - catch e ↓
     - reply :≡ Error(e)
-  - write JsonProtocol#string(reply) to stdout
+  - write JsonProtocol#string(reply) + '\n' to stdout
 
 **** build
 
@@ -944,11 +949,12 @@ stdout to communicate with the client?
 
 ContractLoop#mk : Contract Any → ContractLoop :≡ λcontract,server.↓
 - init :≡ λdata.↓
-  - ServerProtocol#start(server data)
-  - ServerProtocol#state(server)
+  1) ServerProtocol#start(server data)
+  2) ServerProtocol#state(server)
+
 - tx :≡ λstate,request.↓
   - match contract#client(state request) ↓
-    - Error(string) → <Error("client error. error = #{string}"), state>
+    - Error(string) → <Error("Client error. error = #{string}"), state>
     - Ok(request) → ↓
       - try ↓
         - <reply, next_state> :≡ ServerProtocol#rcv(server request)

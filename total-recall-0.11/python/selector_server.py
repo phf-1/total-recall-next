@@ -2,9 +2,7 @@
 
 # Context
 
-from configuration import Configuration
 from db import Db
-from row import Row
 from ok import Ok
 from error import Error
 from mark import Mark
@@ -37,7 +35,6 @@ def _select_ids(db, threshold, time, ids):
 
 
 class SelectorServer:
-
     # Interface
 
     @classmethod
@@ -53,7 +50,7 @@ class SelectorServer:
                 try:
                     db = Db.mk(Path(path_str))
                 except Exception as e:
-                    msg = f"database cannot be built from path_str."
+                    msg = "database cannot be built from path_str."
                     msg += f" path_str = {path_str}"
                     msg += f" exception = {e}"
                     return Error(msg)
@@ -61,7 +58,7 @@ class SelectorServer:
                 try:
                     time = Time.mk(time_str)
                 except Exception as e:
-                    msg = f"time cannot be built from time_str."
+                    msg = "time cannot be built from time_str."
                     msg += f" time_str = {time_str}"
                     msg += f" exception = {e}"
                     return Error(msg)

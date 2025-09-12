@@ -34,6 +34,7 @@ class Time(datetime):
                 raise AssertionError(f"Not UTC: {s}")
 
             return cls(dt.astimezone(timezone.utc))
+
         except Exception:
             raise AssertionError(f"Invalid ISO8601 UTC string: {s}")
 

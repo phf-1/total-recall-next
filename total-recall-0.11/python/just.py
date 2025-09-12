@@ -8,7 +8,7 @@ from typing import Any
 
 @dataclass
 class Just:
-    x: Object
+    x: Any
 
     # Interface
 

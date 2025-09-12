@@ -7,28 +7,26 @@ from operator import methodcaller
 
 class ServerProtocol:
     START = "server_start"
-    STATE = "server_state"
     RCV = "server_rcv"
-    STOP = "server_stop"
+    STATE = methodcaller("server_state")
+    STOP = methodcaller("server_stop")
 
     # Interface
 
     @classmethod
-    def start(cls, obj, data):
+    def start(cls, server, data):
         call = methodcaller(cls.START, data)
-        return call(obj)
+        call(server)
 
     @classmethod
-    def state(cls, obj):
-        call = methodcaller(cls.STATE)
-        return call(obj)
-
-    @classmethod
-    def rcv(cls, obj, msg):
+    def rcv(cls, server, msg):
         call = methodcaller(cls.RCV, msg)
-        return call(obj)
+        return call(server)
 
     @classmethod
-    def stop(cls, obj):
-        call = methodcaller(cls.STOP)
-        return call(obj)
+    def state(cls, server):
+        return cls.STATE(server)
+
+    @classmethod
+    def stop(cls, server):
+        cls.STOP(server)

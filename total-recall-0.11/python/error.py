@@ -2,7 +2,6 @@
 
 # Context
 
-from json_protocol import JsonProtocol
 from dataclasses import dataclass
 
 
