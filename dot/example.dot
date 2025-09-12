@@ -1,0 +1,21 @@
+digraph G {
+  node [shape=rect, fontsize=12, fontname="JetBrains Mono"]
+  nodesep=1
+  ranksep=1
+  pad=0.5
+
+  "start:String" -> { "1:Ok(Object)", "1:Error(String)" }
+
+  "1:Ok(Object)" -> { "1:Ok(Sort)", "2:Error(String)" }
+
+  "1:Ok(Sort)" -> { "1:Ok(Nodes)", "1:Degraded(Nodes × Rest)", "3:Error(String)" }
+
+  {
+    "1:Ok(Nodes)",
+    "1:Degraded(Nodes × Rest)",
+    "1:Error(String)",
+    "2:Error(String)",
+    "3:Error(String)"
+    } -> { "end:String" }
+
+}

@@ -1,0 +1,6 @@
+TAGS
+build
+dist
+log
+__pycache__
+*.elc

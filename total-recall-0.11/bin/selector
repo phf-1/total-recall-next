@@ -1,0 +1,32 @@
+#! /usr/bin/env bash
+
+# :ID: 7aea751b-86ef-4003-8f26-6142353a1ce3
+
+source ${TOTAL_RECALL_VENV_ACTIVATE}
+
+export PYTHONPATH=${TOTAL_RECALL_PYTHON_LIB}
+export LC_ALL=C.UTF-8
+export PYTHONUTF8=1
+
+PROGRAM=$(cat <<'EOF'
+# Context
+
+from configuration import Configuration
+from contract_loop import ContractLoop
+from selector_contract import selector_contract as contract
+from selector_server import SelectorServer
+import sys
+
+# Interface
+
+if __name__ == "__main__":
+    conf = Configuration()
+    conf.read()
+    server = SelectorServer.mk()
+    loop = ContractLoop.mk(contract, server)
+    loop.start(None)
+    sys.exit(0)
+EOF
+)
+
+exec python3 -c "$PROGRAM"

@@ -1,0 +1,32 @@
+#! /usr/bin/env bash
+
+# :ID: 9cd63108-059f-48dd-9a27-832db9fbfb10
+
+source ${TOTAL_RECALL_VENV_ACTIVATE}
+
+export PYTHONPATH=${TOTAL_RECALL_PYTHON_LIB}
+export LC_ALL=C.UTF-8
+export PYTHONUTF8=1
+
+PROGRAM=$(cat <<'EOF'
+# Context
+
+from configuration import Configuration
+from contract_loop import ContractLoop
+from graph_contract import graph_contract as contract
+from graph_server import GraphServer
+import sys
+
+# Interface
+
+if __name__ == "__main__":
+    conf = Configuration()
+    conf.read()
+    server = GraphServer.mk()
+    loop = ContractLoop.mk(contract, server)
+    loop.start(None)
+    sys.exit(0)
+EOF
+)
+
+exec python3 -c "$PROGRAM"

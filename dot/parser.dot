@@ -1,0 +1,55 @@
+digraph G {
+        node [shape=rect, fontsize=12, fontname="JetBrains Mono"]
+        nodesep=0.5
+        ranksep=0.75
+        pad=0.5
+
+        ok [label="<'ok, <path, id, question, answer>>"]
+        error1 [label="<'error, h has no id>"]
+        error2 [label="<'error, h is neither a definition or an exercise>"]
+        error3 [label="<'error, h is missing a question>"]
+        error4 [label="<'error, h is missing an answer>"]
+
+        "h : Headline" -> "'ok × ExData | 'error × String" [label="headline→ex-data"]
+        {rank=same; "h : Headline", "'ok × ExData | 'error × String"}
+
+        "h : Headline"
+        -> "path :≡ path(h)"
+        -> "id :≡ h#id()"
+        -> {rank = same; "id is a UUID", "id is not a UUID"}
+
+        "id is not a UUID"
+        -> error1
+
+        "id is a UUID"
+        -> {rank = same; "h#type() = ex", "h#type() = def", "h is not an ex nor a def"}
+
+        "h is not an ex nor a def"
+        -> error2
+
+        "h#type() = ex"
+        -> "question :≡ h#headlines(0)"
+        -> {rank = same; "question is a headline", "question is not a headline"}
+
+        "question is not a headline"
+        -> error3
+
+        "question is a headline"
+        -> "question :≡ content(question)"
+        -> "answer :≡ h#headlines(1)"
+        -> {rank = same; "answer is a headline", "answer is not a headline"}
+
+        "answer is not a headline"
+        -> error4
+
+        "answer is a headline"
+        -> "answer :≡ content(answer)"
+        -> ok
+
+        "h#type() = def"
+        -> "question :≡ What is the definition?"
+        -> "answer :≡ content h"
+        -> ok
+
+        {rank=same; ok, error1, error2, error3, error4}
+}

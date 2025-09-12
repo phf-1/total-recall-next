@@ -1,0 +1,546 @@
+#+PROPERTY: header-args:makefile :noweb yes :mkdirp yes :tangle Makefile
+
+* configuration
+
+#+begin_src makefile
+SHELL := bash
+.SHELLFLAGS := -ceuo pipefail
+MAKEFLAGS += --no-print-directory
+.ONESHELL:
+#.SILENT:
+#+end_src
+
+* VERSION
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+VERSION defines the version of the package
+
+** prove
+
+#+begin_src makefile
+PREVIOUS_VERSION=0.11
+VERSION=0.11
+#+end_src
+
+* REQUIRES
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+REQUIRES defines the package dependencies.
+
+** prove
+
+#+begin_src makefile
+PREVIOUS_REQUIRES=((emacs "29.4"))
+REQUIRES=((emacs "29.4"))
+#+end_src
+
+* LIB
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+LIB is a directory where the source code is located.
+
+** prove
+
+#+begin_src makefile
+PREVIOUS_LIB=${PWD}/total-recall-${PREVIOUS_VERSION}
+LIB=${PWD}/total-recall-${VERSION}
+#+end_src
+
+* ELISP_LIB
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+ELISP_LIB is a directory where the ELisp source code is located.
+
+** prove
+
+#+begin_src makefile
+PREVIOUS_ELISP_LIB=${LIB}/elisp
+ELISP_LIB=${LIB}/elisp
+#+end_src
+
+* PYTHON_LIB
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+PYTHON_LIB is a directory where the source code is located.
+
+** prove
+
+#+begin_src makefile
+PREVIOUS_PYTHON_LIB=${LIB}/python
+PYTHON_LIB=${LIB}/python
+#+end_src
+
+* FIXTURE
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+FIXTURE is a directory where test data are located.
+
+** prove
+
+#+begin_src makefile
+FIXTURE=${PWD}/fixture
+#+end_src
+
+* EL
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+EL is a path to the entry file of the package.
+
+** prove
+
+#+begin_src makefile
+EL=${ELISP_LIB}/total-recall.el
+#+end_src
+
+* PKG_EL
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+PKG_EL is a path to the entry package file.
+
+** prove
+
+#+begin_src makefile
+PKG_EL=${ELISP_LIB}/total-recall-pkg.el
+#+end_src
+
+* VENV
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+VENV is a path to the python venv directory.
+
+** prove
+
+#+begin_src makefile
+VENV=${PWD}/venv
+#+end_src
+
+* VENV_ACTIVATE
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+VENV_ACTIVATE is a path to the python venv activate script.
+
+** prove
+
+#+begin_src makefile
+VENV_ACTIVATE=${VENV}/bin/activate
+#+end_src
+
+* VENV_DEV
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+VENV_DEV is a path to the requirements file defining development dependencies.
+
+** prove
+
+#+begin_src makefile
+VENV_DEV=${PYTHON_LIB}/dev-requirements.txt
+#+end_src
+
+* VENV_PROD
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+VENV_PROD is a path to the requirements file defining production dependencies.
+
+** prove
+
+#+begin_src makefile
+VENV_PROD=${PYTHON_LIB}/prod-requirements.txt
+#+end_src
+
+* VENV_SETUP
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+VENV_SETUP is a variable that expands to instructions that setup the VENV for a
+python interpreter.
+
+** prove
+
+#+begin_src makefile
+define VENV_SETUP
+export TOTAL_RECALL_VENV_ACTIVATE=${VENV_ACTIVATE}
+export TOTAL_RECALL_PYTHON_LIB=${PYTHON_LIB}
+endef
+#+end_src
+
+* BIN
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+BIN is a variable that expands to the directory that stores executables.
+
+** prove
+
+#+begin_src makefile
+BIN=${LIB}/bin
+#+end_src
+
+* tags
+
+#+begin_src makefile
+.PHONY: tags
+tags:
+	fd -g '*.el' . ${ELISP_LIB} | etags -
+#+end_src
+
+* version
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+version is a Rule such that ~make version~ propagate versions where it must.
+
+** prove
+
+#+begin_src makefile
+.PHONY: version
+version:
+	sed -i "s|${PREVIOUS_VERSION}|${VERSION}|" ${PKG_EL}
+	if [[ -d "${PREVIOUS_LIB}" ]]; then
+	  if [[ "${PREVIOUS_LIB}" != "${LIB}" ]]; then
+	    mv "${PREVIOUS_LIB}" "${LIB}"
+	  fi
+	fi
+	echo "DONE $@"
+#+end_src
+
+* requires
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+requires is a Rule such that ~make requires~ propagate requires where it must.
+
+** prove
+
+#+begin_src makefile
+.PHONY: requires
+requires:
+	sed -i 's|${PREVIOUS_REQUIRES}|${REQUIRES}|' ${PKG_EL} ${EL}
+	echo "DONE $@"
+#+end_src
+
+* dev
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+dev is a Rule such that ~make dev~ starts Emacs, loads total-recall, enables
+debug-on-error, and calls ~(total-recall)~ in dev mode.
+
+** prove
+
+#+begin_src makefile
+.PHONY: dev
+dev:
+	export TOTAL_RECALL_ENV="dev"
+	export TOTAL_RECALL_ROOT="${FIXTURE}"
+	emacs -Q \
+	--eval '(add-to-list (quote load-path) (expand-file-name "${ELISP_LIB}"))' \
+	--eval '(require (quote total-recall))' \
+	--eval '(setq debug-on-error t)' \
+	--eval '(total-recall)' \
+	echo "$@"
+#+end_src
+
+* prod
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+prod is a Rule such that ~make prod~ starts Emacs, loads total-recall, enables
+debug-on-error, and calls ~(total-recall)~ in prod mode.
+
+** prove
+
+#+begin_src makefile
+.PHONY: prod
+prod:
+	export TOTAL_RECALL_ENV="prod"
+	export TOTAL_RECALL_ROOT="${HOME}/src/qa"
+	emacs -Q \
+	--eval '(add-to-list (quote load-path) (expand-file-name "${ELISP_LIB}"))' \
+	--eval "(require 'total-recall)" \
+	--eval "(total-recall)"
+	echo "$@"
+#+end_src
+
+* python-venv
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+python-venv is a rule such that ~make python-venv~ builds ${VENV}
+
+** prove
+
+#+begin_src makefile
+.PHONY: python-venv
+python-venv:
+	uv venv ${VENV} --python 3.13
+	source ${VENV_ACTIVATE}
+	uv pip install -r ${VENV_DEV} -r ${VENV_PROD}
+	echo "DONE $@"
+#+end_src
+
+* python-repl
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+python-repl is a rule such that ~make python-repl~ starts the Python REPL within the
+environment.
+
+** prove
+
+#+begin_src makefile
+.PHONY: python-repl
+python-repl: python-venv
+	${VENV_SETUP}
+	python
+	echo "DONE $@"
+#+end_src
+
+* graph
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+graph is a rule such that ~make graph~ starts the [[ref:42258bf5-fe02-4027-96b9-d53ea5a8e7fa][Graph]] process.
+
+** prove
+
+#+begin_src makefile
+.PHONY: graph
+graph: python-venv
+	${VENV_SETUP}
+	${BIN}/graph
+#+end_src
+
+* selector
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+selector is a rule such that ~make selector~ starts the [[ref:42258bf5-fe02-4027-96b9-d53ea5a8e7fa][Selector]] process.
+
+** prove
+
+#+begin_src makefile
+.PHONY: selector
+selector: python-venv
+	${VENV_SETUP}
+	${BIN}/selector
+#+end_src
+
+* format-python
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~format-python~ is a Rule such that ~make format-python~ formats all Python source code files under ~PYTHON_LIB~.
+
+** prove
+
+#+begin_src makefile
+.PHONY: format-python
+format-python:
+	source ${VENV_ACTIVATE}
+	ruff format "${PYTHON_LIB}" &>/dev/null
+	echo "DONE $@"
+#+end_src
+
+* lint-python
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~lint-python~ is a Rule such that ~make lint-python~ lints all Python source code files under ~PYTHON_LIB~.
+
+** prove
+
+#+begin_src makefile
+.PHONY: lint-python
+lint-python: format-python
+	source ${VENV_ACTIVATE}
+	ruff check --fix "${PYTHON_LIB}" &>/dev/null
+	echo "DONE $@"
+#+end_src
+
+* lint-elisp
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~lint-elisp~ is a Rule such that ~make lint-elisp~ lints all Elisp source code files under ~ELISP_LIB~.
+
+** prove
+
+#+begin_src makefile
+.PHONY: lint-elisp
+lint-elisp: version requires
+	EMACS_INIT="(progn (require 'package) (package-initialize) (require 'package-lint))"
+	emacs -Q --batch --eval "$$EMACS_INIT" -f package-lint-batch-and-exit "${EL}"
+	echo "DONE $@"
+#+end_src
+* lint
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~lint~ is a Rule such that ~make lint~ lints all source code files under ~LIB~.
+
+** prove
+
+#+begin_src makefile
+.PHONY: lint
+lint:
+	${MAKE} lint-python
+	${MAKE} lint-elisp
+	echo "DONE $@"
+#+end_src
+
+* compile
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~compile~ is a Rule such that ~make compile~ compiles all source code files under
+~ELISP_LIB~.
+
+** prove
+
+#+begin_src makefile
+.PHONY: compile
+compile:
+	for file in ${ELISP_LIB}/*.el; do
+	  emacs -Q --batch --dir "${ELISP_LIB}" -f batch-byte-compile "$$file"
+	done
+	echo "DONE $@"
+#+end_src
+
+* checkdoc
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~compile~ is a Rule such that ~make compile~ compiles all source code files under
+~ELISP_LIB~.
+
+** prove
+
+#+begin_src makefile
+.PHONY: checkdoc
+checkdoc:
+	for file in ${ELISP_LIB}/*.el; do \
+	  emacs -Q --batch \
+	    --eval "(require 'checkdoc)" \
+	    --eval "(checkdoc-file \"$$file\")"
+	done
+	echo "DONE $@"
+#+end_src
+
+* dist
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+** define
+
+~dist~ is a Rule such that ~make dist~ build a distribution of TotalRecall in ./dist
+
+** prove
+
+#+begin_src makefile
+.PHONY: dist
+dist:
+	${MAKE} clean
+	mkdir -p ./dist
+	tar -czf ./dist/total-recall-${VERSION}.tar.gz total-recall-${VERSION}
+	zip -r ./dist/total-recall-${VERSION}.zip total-recall-${VERSION}
+	echo "DONE $@"
+#+end_src
+
+* all
+
+#+begin_src makefile
+.PHONY: all
+all:
+	${MAKE} lint
+	${MAKE} compile
+	${MAKE} checkdoc
+	${MAKE} dist
+#+end_src
+
+* clean
+
+#+begin_src makefile
+.PHONY: clean
+clean:
+	fd -u -t f -e elc . ${ELISP_LIB} -x rm
+	fd -u -t d -p __pycache__ ${PYTHON_LIB} -x rm -rf
+	rm -rf ./dist
+	rm -rf .ruff_cache
+	rm -rf TAGS
+	rm -rf venv
+#+end_src
+
+* Local Variables :noexport:
+Local Variables:
+eval: (add-hook 'before-save-hook #'whitespace-cleanup)
+eval: (add-hook 'after-save-hook #'org-babel-tangle)
+eval: (indent-tabs-mode)
+End:

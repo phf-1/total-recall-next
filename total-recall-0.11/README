@@ -1,0 +1,1135 @@
+# -*- mode: org; -*-
+
+# :ID: 2b6a2d42-bfd0-4658-b25a-b1b7000d1b01
+
+* Introduction
+
+`total-recall` is an interactive function that provides spaced repetition for
+Emacs. It manages "elements" (i.e., definitions and exercises) stored in Org files
+under `total-recall-root-dir`. Elements are sorted based on dependencies (e.g., if
+element A requires element B, element B is presented first). If circular dependencies
+are detected, they are eliminated as a fallback mechanism and the cycles are
+presented to be manually removed. Element selection uses historical data to optimize
+review frequency: easier elements are shown less often. Given that type values are
+configurable, a definition has the form:
+
+#+begin_src org
+,* Name
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: e0d2d8ee-0371-4f92-93e5-6b2231871c90
+:END:
+
+Content.
+#+end_src
+
+An exercise has the form:
+
+#+begin_src org
+,* Name
+:PROPERTIES:
+:TYPE: b0d53cd4-ad89-4333-9ef1-4d9e0995a4d8
+:ID: 6296bdc8-7d5a-4191-81d4-f5b8a4c282b4
+:END:
+
+,** Question
+
+Content. The name of the headline is arbitrary.
+
+,** Answer
+
+Content. The name of the headline is arbitrary.
+#+end_src
+
+The remaining of the document provide the program specification and current
+discussions.
+
+* Specification
+
+Python code provides interfaces used for quantitative computations /e.g./ ordering and
+selecting elements. Emacs Lisp code provides everything else.
+
+« Objects » are specified in =specify= sections while candidate implementations are
+provided in =build= sections. Other sections like =discuss=, =test= or =prove= are
+self-explanatory.
+
+UUIDs are used to identifies various elements while references are used to reference
+them. The =Tools= section provides Emacs Lisp tools such that a click on a reference
+searches for the matching ids and reciprocally.
+
+** Emacs Lisp
+*** Utils
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Utils is a set of macros and functions
+
+***** reduce-while
+
+Step :≡ Any → 'cont × Any | 'halt × Any
+
+Steps :≡ List(Step)
+
+reduce-while : Any Steps → Any :≡
+- λacc,steps.↓
+  - match steps
+    - [] → acc
+    - [step | steps] →
+      - match step(acc)
+        - <'halt, acc> → acc
+        - <'cont, acc> → reduce-while(acc steps)
+
+***** satisfies-invariant-p
+
+satisfies-invariant-p : Any Keyword → Boolean :≡
+- λany,kw.↓
+  - if any is not a function, return false
+  - try
+    - return kw ∈ any('invariants) # TODO: find a better way.
+  - catch
+    - return false
+
+***** nat-p : Any → Boolean
+***** epoch-p : Any → Boolean
+***** epoch→iso8601 : Epoch → ISO8601
+***** iso8601→epoch : ISO8601 → Epoch
+***** probability-p : Any → Boolean
+***** list-of-p : Any (Any → Boolean) → Boolean
+***** send
+
+Actor :≡ Any → Any
+
+Message :≡ Any
+
+send : Actor Message → Any :≡ λactor,msg.actor msg
+
+***** pp
+
+pp : Any → ∅
+
+After pp(any), any has been printed in a buffer and the buffer has been displayed.
+
+***** context
+
+context : List(Symbol) Body → Form
+
+context is a macro that avoids the need to prefix names with =total-recall--=.
+
+#+begin_src emacs-lisp
+(total-recall--context (f) body)
+#+end_src
+
+Is expanded to:
+
+#+begin_src emacs-lisp
+(cl-flet ((f #'total-recall--f)) body)
+#+end_src
+
+***** wait-until-process-run
+
+Process :≡ [[info:elisp#Processes][elisp#Processes]]
+
+Timeout :≡ Second
+
+Delta :≡ Second
+
+wait-until-process-run : Process Timeout Delta → Nil
+
+wait-until-process-run(process timeout delta) blocks for delta until process is in
+state 'run. When timeout is exhausted, raise an error.
+
+***** uuid-p : Any → Boolean
+***** uuid-re : RegEx
+***** uuid-re-strict : RegEx
+
+**** build
+
+[[ref:253f2cf4-3b7d-42a4-b841-1f6dbc52bdfe]]
+
+*** Env
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Env :≡ "prod" | "dev" | "test"
+
+*** Logger
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Logger#mk : Env → Logger
+
+logger :≡ Logger#mk env
+
+logger#debug : String → Nil
+
+logger#info : String → Nil
+
+logger#error : String → Nil
+
+∀ name, logger#name(msg) prints =msg= to stdout according to =env=. If env = "prod", then
+only prints errors. If env = "test", then only prints errors. If env = "dev", then
+print all messages.
+
+**** build
+
+[[ref:a0e557e8-87f8-4970-a423-adea9435f934]]
+
+*** Actor
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+
+**** specify
+
+Actor#mk : Logger … → Actor
+
+actor :≡ Actor#mk logger …
+
+send(actor msg) : Any
+
+send(actor msg) → logger#debug(msg)
+
+*** Clock
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Clock#mk : Logger → Clock
+
+clock :≡ Clock#mk logger
+
+clock is an Actor.
+
+now : Epoch :≡ clock#now(). now is the time at call time.
+
+**** build
+
+[[ref:712feead-c9ee-4dad-830a-0181ab4082d5]]
+
+*** Io
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Io#mk : Logger String → Io
+
+io :≡ Io#mk logger name
+
+io is an Actor
+
+io#minibuffer : String → Io
+io#minibuffer(msg) writes the msg to the minibuffer and returns self
+
+io#buffer : String → Io
+io#buffer(msg) writes the msg to the buffer named after ~name~ and returns self
+
+io#buffer-name() = name of the associated buffer built from input name
+
+**** build
+
+[[ref:b4ab8208-e1b2-4468-8a4f-db373d7d556f]]
+
+*** Report
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 05a4ce8c-583a-43d2-9dde-af32164d1a97
+:END:
+**** specify
+
+Report#mk : Logger → Report
+
+report :≡ Report#mk logger
+
+report is an Actor
+
+report#add : String → Report
+report#add(line) adds line to the accumulated lines so far
+
+report#string() : String :≡ the concatenation of all accumulated lines.
+
+**** build
+
+[[ref:d6adcba5-5f9a-42ae-b8f9-dd627d6c10f4]]
+
+*** Conf
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Configuration#mk() : Configuration
+
+conf :≡ Configuration#mk()
+
+∀ name as defined in the interface, of the conf#name() gives the associated value.
+
+All values are derived from the environment.
+
+**** build
+
+[[ref:d9e6a76c-0233-409c-993a-3cd6ad4333af]]
+
+*** Rating
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Value :≡ :success | :failure | :skip
+
+Rating#mk : Epoch UUID Value → Rating
+
+Rating#p : Any → Boolean
+
+Rating#success :≡ λepoch,uuid.Rating#mk epoch uuid :success
+
+Rating#failure :≡ λepoch,uuid.Rating#mk epoch uuid :failure
+
+Rating#skip :≡ λepoch,uuid.Rating#mk epoch uuid :skip
+
+rating :≡ Rating#mk(epoch id value)
+
+rating#data() :≡ [epoch, id, value]
+
+**** build
+
+[[ref:72db9687-443c-45ba-a40c-d99909a8006a]]
+
+*** Exercise
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       d6b90764-fff1-4bd6-909a-322912b0da73
+:END:
+**** specify
+
+Name :≡ List(String)
+
+Id :≡ UUID
+
+Question :≡ String
+
+Answer :≡ String
+
+Exercise#mk : Path Id Name Question Answer → Exercise
+
+exercise :≡ Exercise#mk path id name question answer
+
+exercise#file() = path
+
+exercise#id() = id
+
+exercise#path() = name
+
+exercise#question() = question
+
+exercise#answer() = answer
+
+**** build
+
+[[ref:5ee57d9b-958e-4b6e-a62f-1c0b06a0f4d9]]
+
+*** Definition
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Name :≡ List(String)
+
+Id :≡ UUID
+
+Content :≡ String
+
+Definition#mk : Path Id Name Content → Definition
+
+definition :≡ Definition#mk path id name content
+
+definition#file() = path
+
+definition#id() = id
+
+definition#path() = name
+
+definition#content() = content
+
+**** build
+
+[[ref:297c1e4b-3fcc-4e35-887e-442ca564f8c6]]
+
+*** Searcher
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Root :≡ Path to a directory where search occurs
+
+DefUUID :≡ UUID that identifies a definition (value of the :TYPE: drawer property).
+
+ExUUID :≡ UUID that identifies an exercise (value of the :TYPE: drawer property).
+
+Ripgrep :≡ Absolute path to ripgrep or name of the PATH executable
+
+Searcher#mk : Logger Root DefUUID ExUUID Ripgrep → Searcher
+
+searcher :≡ Searcher#mk logger root defid exid rg
+
+search is an Actor
+
+searcher#files() : List(Path) :≡ list of absolute org file paths under root that
+contain at least one occurrence of defid or exid.
+
+**** build
+
+[[ref:674f7b2d-6b75-4df0-a431-5c574586a871]]
+
+*** Parser
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+ExType :≡ Strings that identify exercises types.
+
+DefType :≡ Strings that identify exercises types.
+
+Parser#mk : [[ref:0bd721c4-cef2-4cf5-9bfe-5ae3ae548cce][Logger]] ExType DefType → Parser
+
+parser ≡ Parser#mk logger ex-type def-type
+
+parser is an Actor
+
+parser#parse : OrgFile → List([[ref:d6b90764-fff1-4bd6-909a-322912b0da73][Exercise]])
+
+parser#parse : List(OrgFile) → List([[ref:d6b90764-fff1-4bd6-909a-322912b0da73][Exercise]]) :≡ λfiles.map-concat parser#parse files
+
+**** build
+***** Headline → 'ok × ExData | 'error × String
+
+[[file:dot/parser.dot]]
+
+***** ■
+
+[[ref:5d5fec94-de66-4530-8267-a7f26ae03f2b]]
+
+*** Selector
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       1ce846c7-9f47-4cdb-91bf-5a68cc6ef6f2
+:END:
+**** specify
+
+Venv :≡ Path to the directory where the python venv is to be installed.
+
+Lib :≡ Path to the directory where Python source code is stored.
+
+Selector#mk : Logger Clock Venv Lib Db → Selector
+
+selector : Selector
+
+selector is an Actor
+
+selector#select : List(UUID) → List(UUID)
+
+selected :≡ selector#select uuids
+
+selected properties are derived from the underlying server.
+
+**** build
+
+[[ref:ecfaf421-0c40-4a47-b5c9-26155acf9986]]
+
+*** Graph
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       c5b46e6f-1cad-4aed-9ff6-d299074eac58
+:END:
+**** specify
+
+Venv :≡ Path to the directory where the python venv is to be installed.
+
+Lib :≡ Path to the directory where Python source code is stored.
+
+Graph#mk : Logger Venv Lib → Graph
+
+graph :≡ Graph#mk Logger Venv Lib
+
+graph is an Actor
+
+Nodes :≡ List(UUID)
+
+Edges :≡ List(UUID × UUID)
+
+graph#sort : Nodes Edges → 'ok × Nodes | 'error × String
+
+<'ok, sorted-nodes> :≡ graph#sort nodes edges
+
+sorted-nodes properties are derived from the underlying server.
+
+**** build
+
+[[ref:5c711ef1-d575-46d3-bc4c-770dd7f7157b]]
+
+*** Scheduler
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Scheduler#mk : Logger Graph Selector → Scheduler
+
+scheduler :≡ Scheduler#mk logger graph selector
+
+scheduler#schedule : List(Exercise) Threshold Time → List(Exercise)
+
+exercises :≡ schedule#schedule exs thr time
+
+exercises is a sub-list of exs, each one selected by ~selector~ and ordered using ~graph~.
+
+**** build
+
+[[file:dot/scheduler.dot]]
+
+[[ref:dad9af0f-18ea-4ad2-9105-bd00fdc21c72]]
+
+*** Db
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       74d00768-f37a-49c9-a943-4a39f1a26c0e
+:END:
+**** specify
+
+DBPath :≡ Path to a regular file that represents a sqlite3 database | Nil
+
+DB#mk : Logger DBPath → DB
+
+db :≡ DB#mk logger db-path
+
+db#stop() : Self
+
+db#save : Rating → Self
+
+db#ratings : UUID → List(Rating)
+
+**** build
+
+[[ref:3020d2a5-face-4348-b05d-e8755d7c6195]]
+
+**** test
+
+[[ref:d31af193-988e-49b3-93db-08c41266bf84]]
+
+*** Ui
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       2e317042-46f4-4407-9bd4-68ec22c1955e
+:END:
+**** specify
+
+Name :≡ Strings used as the base name for the buffer where the review will occur
+
+Width, Height :≡ Nat that specifies the respective dimensions of the frame
+
+Success, Failure, Quit, Skip, Reveal : Characters used as keys for the relevant buttons
+
+Ui#mk : Logger Name Width Height Success Failure Skip Reveal → Ui
+
+ui :≡ Ui#mk
+
+ui is an Actor
+
+ui#show : Exercise UserInputs → 'stop | 'skip | 'success | 'failure
+
+**** build
+
+[[ref:071782c8-7575-4678-8090-9e8abaad044c]]
+
+*** Reviewer
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Reviewer#mk : Logger Db Ui List([[ref:d6b90764-fff1-4bd6-909a-322912b0da73][Exercise]]) → Reviewer
+
+reviewer ≡ Reviewer#mk logger db ui exercises
+
+reviewer is an Actor
+
+reviewer#start : UserInputs → [[ref:05a4ce8c-583a-43d2-9dde-af32164d1a97][Report]]
+
+**** build
+
+[[ref:9d1ca161-acfa-48b8-bf55-b0f6e97d8d48]]
+
+*** total-recall
+:PROPERTIES:
+:ID:       9030fde9-f7fc-4c83-a54b-41fd1a9872d7
+:END:
+**** TODO specify
+
+total-recall is an interactive function. After execution, the user has completed a
+review session, meaning:
+1.
+1. All [[ref:2ade1c31-ced1-4673-a7f2-b63b7a20ab26][exercises]] in the file system under [[ref:5709bbc0-e7e6-4eba-90c9-1840b010f3b2][root-dir]] have been
+   [[ref:76f234fc-5f51-4626-80a5-23e8dfcc50e2][scheduled]] and reviewed or skipped through the [[ref:7c752724-7e3d-4529-bf1b-06482ca53b3e][ui]].
+2. Review data have been recorded in a [[ref:f55fac90-c922-4653-bfb0-10f83a68d53c][database]] under [[ref:7a2f9b87-a2f8-4fd1-991c-deab4100614c][db-path]].
+3. The user has been informed of their performance by a [[ref:4187a5b0-15c1-49fc-9962-7dd5802e4f25][report]] written to the [[ref:2076d556-ee35-4db7-bd58-887bc5a1c254][io]] of
+   Emacs.
+
+**** build
+
+[[ref:4c292e22-4b9a-4cb2-8867-17fa1eabf024]]
+
+*** package
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       882edf25-44bc-4308-bfef-10ce2f8acd00
+:END:
+**** specify
+
+package : [[info:elisp#Multi-file Packages][elisp#Multi-file Packages]]
+
+**** build
+
+[[ref:d6b16712-062a-44aa-82ce-893b5267906f]]
+
+**** test
+
+#+begin_src bash
+make test-package
+#+end_src
+
+** Python
+*** Configuration
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Configuration#mk() : Configuration
+
+conf :≡ Configuration#mk()
+
+conf#venv_path() : Path :≡ the path where the venv is installed as specified by the
+user.
+
+After conf, Python executes in UTF-8 mode and the environment is read.
+
+**** build
+
+[[ref:25974f54-a9f9-4429-b199-b43dbebcac1a]]
+
+*** Mark
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Mark#success() : Mark
+
+Mark#failure() : Mark
+
+Mark#skip() : Mark
+
+Mark#string : Mark → String
+
+Mark#from_string : String → Mark | ⊥ :≡ λs.↓
+- match s
+  - ":success" → Mark#success()
+  - ":failure" → Mark#failure()
+  - ":skip" → Mark#skip()
+
+**** build
+
+[[ref:9c974443-0cfb-47e7-8b54-b29b16b85f53]]
+
+*** Time
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Time#mk : ISO8601UTC  → Time
+
+time :≡ Time#mk s where s is an ISO8601 UTC string
+
+time#string() : String :≡ s
+
+**** build
+
+[[ref:707bd668-327f-463a-82fb-eff4592fd962]]
+
+*** Identifier
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Identifier#mk : String → Identifier | ⊥ :≡ λs.↓
+- if s is formatted as a UUID hex string, return Identifier#mk(s)
+- else, return ⊥
+
+Identifier#= : Identifier Identifier → Boolean
+
+∀ id1 id2, id1 = id2 iff Identifier#=(id1 id2)
+
+identifier :≡ Identifier#mk(s)
+
+identifier#string() : String :≡ s
+
+**** build
+
+[[ref:3bc7bf47-0c5f-4a15-9c8d-0bfbbea66ee2]]
+
+*** JsonProtocol
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+JsonProtocol#string : Any → String :≡ λx.x#json_string()
+
+**** build
+
+[[ref:4deef454-284f-43d7-adfe-9a4bd85ffe67]]
+
+*** Error
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Error#mk : Any → Error | ⊥ :≡ λany.↓
+- if any implements JsonProtocol, return Error#mk(any)
+- else, return ⊥
+
+Instances of Error implement JsonProtocol.
+
+**** build
+
+[[ref:2c0468fa-8fbd-48f1-83c5-d9321cb6f1ad]]
+
+*** Ok
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Ok#mk : Any → Ok | ⊥ :≡ λany.↓
+- if any implements JsonProtocol, return Ok#mk(any)
+- else, return ⊥
+
+Instances of Ok implement JsonProtocol.
+
+**** build
+
+[[ref:69708334-a624-4bc8-8c90-9f3ad659f158]]
+
+*** Nothing
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Nothing#mk() : Nothing
+
+nothing :≡ Nothing#mk()
+
+**** build
+
+[[ref:2ff19f9b-1895-4fd6-b76d-8bc1085e748f]]
+
+*** Just
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Just#mk : Any → Just
+
+just :≡ Just#mk
+
+**** build
+
+[[ref:bfff70b0-755a-4d3c-907f-7d7de4e7a76f]]
+
+*** Maybe
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Maybe :≡ Nothing | Just(Any)
+
+**** build
+
+[[ref:27952cb2-ad3a-40ad-841b-a8020c606b84]]
+
+*** Degraded
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Degraded#mk : Any → Degraded | ⊥ :≡ λany.↓
+- if any implements JsonProtocol, return Degraded#mk(any)
+- else, return ⊥
+
+Instances of Degraded implement JsonProtocol.
+
+**** build
+
+[[ref:66c46343-bc91-497b-8e4a-f605cf4b4423]]
+
+*** ServerProtocol
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       44eafef4-4db1-4fff-be14-b346a2f1b01b
+:END:
+**** specify
+
+ServerProtocol#start : Any Any → Any :≡ λserver,data.server#protocol_start data
+
+ServerProtocol#start(server data) = server where "=" means "is" in Python. After
+execution, server is ready to receive messages /i.e./ ServerProtocol#rcv(server msg)
+has a meaning.
+
+ServerProtocol#rcv : Any Any → Any :≡ λserver,msg.server#protocol_rcv msg
+
+ServerProtocol#state : Any → Any :≡ λserver.server#protocol_state()
+
+ServerProtocol#stop : Any → Nil :≡ λserver.server#protocol_stop()
+
+**** build
+
+[[ref:1dfa3036-145f-4c7f-9de1-5e74bccfc8ef]]
+
+*** Contract
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+ServerState :≡ Any
+
+NextState :≡ State
+
+Request :≡ Any
+
+Reply :≡ Any
+
+∀ r : Reply, r satisfies the JsonProtocol.
+
+Client :≡ ServerState Request → Ok(Request) | Error(String)
+
+Server :≡ ServerState Request Reply NextState → Ok(Reply × NextState) | Error(String)
+
+Contract#mk : Client Server → Contract
+
+contract :≡ Contract#mk client server
+
+contract#client(state request) :≡ client(state request)
+
+contract#server(state request reply next-state) :≡ server(state request reply next-state)
+
+**** build
+
+[[ref:81169118-7f98-4509-a9ca-2fbf997247d1]]
+
+*** graph_contract
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       d44c84b2-2c30-4463-bb88-3a3ab1cf5ab2
+:END:
+**** specify
+
+Node :≡ String
+
+Nodes :≡ List(Node)
+
+Edge :≡ Node × Node
+
+Edges :≡ List(Edge)
+
+Sort :≡ ['sort', Nodes, Edges]
+
+client : None Sort → Ok(Sort)
+
+client : Any Any → Error(String)
+
+server : None Sort Ok(Nodes) None → Ok(Ok(Nodes) × None)
+
+server : None Sort Degraded(Nodes × List(Nodes × Edges)) None → Ok(Degraded(Nodes × List(Nodes × Edges)) None)
+
+server : Any Any Any Any → Error(String)
+
+graph_contract :≡ Contract#mk client server
+
+**** build
+
+[[ref:fb305ce8-0516-4f48-825b-105b2704d6e9]]
+
+*** Loop
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+State :≡ Any
+
+NextState :≡ State
+
+Request :≡ Any
+
+Reply :≡ Any
+
+Init :≡ Any → State
+
+Tx :≡ State Request → Reply NextState
+
+Loop#mk : Init Tx → Loop
+
+loop :≡ Loop#mk init tx
+
+loop#start : Any → Nil :≡ λdata.↓
+- state :≡ init(data)
+- while true ↓
+  - string :≡ read from stdin
+  - if string is EOF, break
+  - try ↓
+    - request :≡ parse string as JSON
+    - <reply, next-state> :≡ tx(state request)
+    - state :≡ next-state
+  - catch e ↓
+    - reply :≡ Error(e)
+  - write JsonProtocol#string(reply) to stdout
+
+**** build
+
+[[ref:27de3cd6-e4b0-4621-8ab9-f85bb86f17b6]]
+
+**** discuss
+
+***** TODO logging to stderr?
+
+stderr to communicate with the system, i.e., syslog
+stdout to communicate with the client?
+
+*** ContractLoop
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+ContractLoop#mk : Contract Any → ContractLoop :≡ λcontract,server.↓
+- init :≡ λdata.↓
+  - ServerProtocol#start(server data)
+  - ServerProtocol#state(server)
+- tx :≡ λstate,request.↓
+  - match contract#client(state request) ↓
+    - Error(string) → <Error("client error. error = #{string}"), state>
+    - Ok(request) → ↓
+      - try ↓
+        - <reply, next_state> :≡ ServerProtocol#rcv(server request)
+        - match contract#server(state request reply next_state) ↓
+          - Error(string) → <Error("Server error. error = #{string}"), state>
+          - Ok(response) → response
+      - catch e ↓
+        - <Error("server error. error = #{e}"), state>
+- Loop#mk init tx
+
+**** build
+
+[[ref:3a3ba30f-1cca-4c66-ac0d-c00c03ec02ce]]
+
+*** DiGraph
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+DiGraph :≡ List(Node) List(Edge)
+
+*** Cycle(g)
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+Cycle : DiGraph → List(Node) :≡ λg.↓
+- the set of lst in sublists of nodes in g such that ↓
+  - length(lst) ≥ 2
+  - ∀ i, <lst[i], lst[i+1]> in edges of g
+  - <lst[last], lst[0]> in edges of g
+
+*** DAG
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+DAG :≡ DiGraph without cycles
+
+*** NDAG
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+NDAG :≡ DiGraph with at least one cycle
+
+*** GraphServer
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+GraphServer#mk() : GraphServer
+
+server :≡ GraphServer#mk()
+
+server#server_start : Any → GraphServer :≡ λdata.server
+
+server#server_rcv : ['sort', Nodes, Edges] → Any Any :≡ λnodes,edges.↓
+- nodes :≡ map Identifier#mk nodes
+- edges :≡ map λ<start,end>.<Identifier#mk(start), Identifier#mk(end)> edges
+- edges :≡ filter λ<start,end>.start in nodes and end in nodes edges
+- g :≡ <nodes, edges>
+- digraphs :≡ weakly connected components of g
+- digraphs :≡ sort digraphs by ascending number of nodes
+- lst :≡ map digraph→dag digraphs where digraph→dag removes cycles
+- <dags, rest> :≡ unzip lst
+- nodes :≡ concat map topological-sort dags
+- rest :≡ filter λ<cycle, edges>.cycle ≠ [] and edges ≠ [] rest
+- if rest = [], return <Ok(nodes), Nil>
+- else, return <Degraded(<nodes, map λ<cycle, edges>.<cycle, edges> rest>), Nil>
+
+server#server_state() : Nil :≡ λ.Nil
+
+server#server_stop() : Nil :≡ λ.Nil
+
+GraphServer satisfies ServerProtocol and implements graph_contract.
+
+**** build
+
+[[ref:4ec52b7d-39e5-4179-aeb3-1ad5aac8c1c0]]
+
+*** DBPath
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:END:
+**** specify
+
+DBPath :≡ Path to a sqlite3 database with table exercise_log of schema Mark#string() Identifier#string() Time#string()
+
+*** Row
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       ea087479-8cba-49ba-a827-666fab8929e6
+:END:
+**** specify
+
+Row#mk : Mark Identifier Time → Row
+
+row :≡ Row#mk mark id time
+
+row#mark() : Mark :≡ mark
+
+row#id() : Identifier :≡ id
+
+row#time() : Time :≡ time
+
+**** build
+
+[[ref:79a21c29-0a23-456f-89a1-e26f31dff74e]]
+
+*** Db
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       e794f0cb-fa14-4447-9897-cb85683f97f1
+:END:
+**** specify
+
+Db#mk : Path → Db | ⊥
+
+db :≡ Db#mk path
+
+db#rows() : List(Row)
+
+db#rows : Identifier → List(Row) :≡ λid. filter λrow.row#id() = id db#rows()
+
+**** build
+
+[[ref:570c7719-f2e3-4961-bdb5-8ba1db753c39]]
+
+*** selector_contract
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       a7d34e35-804b-4533-9441-8661f785c6d1
+:END:
+**** specify
+
+Ids :≡ List(String)
+
+Select :≡ ['select', DBPath, Threshold, Time, Ids]
+
+client : Nil Select → Ok(Select)
+
+client : Any Any → Error(String)
+
+server : Nil Select Ok(Ids) Nil → Ok(Ok(Ids) Nil)
+
+server : Nil Select Error(String) Nil → Ok(Error(String) Nil)
+
+server : Any Any Any Any → Error(String)
+
+selector_contract :≡ Contract#mk client server
+
+**** build
+
+[[ref:f0ac51ae-05cb-4748-a469-1802e651b58b]]
+
+*** SelectorServer
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       92cd74f9-f826-4c5b-912a-9bd83604457e
+:END:
+**** specify
+
+SelectorServer#mk() : SelectorServer
+
+server :≡ SelectorServer#mk()
+
+server#server_start : Any → SelectorServer :≡ λdata.server
+
+server#server_rcv : DBPath Threshold Time List(String) → Any Any :≡ λpath,threshold,time,ids.↓
+- db :≡ Db#mk path
+- filter λid.select(db#rows(id) threshold time) ids where select(rows threshold time) is true if no successes or last success time + 2^(successes - 1) days ≤ time
+
+server#server_state() : Nil :≡ λ.Nil
+
+server#server_stop() : Nil :≡ λ.Nil
+
+SelectorServer satisfies ServerProtocol and implements selector_contract.
+
+**** build
+
+[[ref:7e2cce5b-9c3d-41c0-9e62-c43334f0d120]]
+
+** Tools
+* discuss
+** TODO user is informed after cycles are detected
+** TODO Tools are provided
+** TODO TODOs are fixed
+** TODO Published in MELPA
+** TODO ndjson ?
+** TODO logger added in Python

@@ -1,0 +1,29 @@
+* An exercise
+:PROPERTIES:
+:TYPE: b0d53cd4-ad89-4333-9ef1-4d9e0995a4d8
+:ID: d5487e6c-6769-4beb-95de-6d21859e6eca
+:END:
+** question
+
+question_w_id
+
+** answer
+
+answer_w_id
+
+* A definition
+:PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       c76ea089-3fe2-4811-801b-641541745fd1
+:END:
+** define
+
+x : X is a Y such that:
+- X#mk : 🞎 → X
+- X#msg : X 🞎 → C
+
+** prove
+
+** test
+
+** discuss

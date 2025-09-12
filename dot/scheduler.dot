@@ -1,0 +1,18 @@
+digraph G {
+        node [shape=rect, fontsize=12, fontname="JetBrains Mono"]
+        nodesep=0.5
+        ranksep=0.75
+        pad=0.5
+
+        "scheduler#schedule exs thr time" -> "exs";
+        "exs" -> "uuids";
+        "uuids" -> "selected-uuids" [label="selector#select"];
+        "uuids" -> "edges" [label="map exs ex→references"]
+        "edges" -> "<uuids,edges>";
+        "<uuids,edges>" -> "sorted-uuids" [label="graph#sort"];
+        {rank=same; "selected-uuids", "sorted-uuids"}
+        "∩" [shape=circle];
+        uuids2 [label="uuids"]
+        exs2 [label="exs"]
+        {"selected-uuids", "sorted-uuids"} -> "∩" -> uuids2 -> exs2
+}
