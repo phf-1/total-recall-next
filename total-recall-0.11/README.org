@@ -1,5 +1,3 @@
-# -*- mode: org; -*-
-
 # :ID: 2b6a2d42-bfd0-4658-b25a-b1b7000d1b01
 
 * Introduction
