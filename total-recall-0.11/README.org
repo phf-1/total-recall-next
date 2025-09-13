@@ -1,11 +1,5 @@
 # :ID: 2b6a2d42-bfd0-4658-b25a-b1b7000d1b01
 
-* Abstract
-
-~total-recall~ is an interactive function that provides spaced repetition for Emacs. It
-manages "elements" (i.e., definitions and exercises) stored in Org files under
-~total-recall-root-dir~.
-
 * Preliminaries
 
 This file is meant to be viewed using Emacs and Org Mode.
