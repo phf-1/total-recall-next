@@ -755,6 +755,8 @@ Nothing#mk() : Nothing
 
 nothing :≡ Nothing#mk()
 
+∅ :≡ nothing
+
 **** build
 
 [[ref:2ff19f9b-1895-4fd6-b76d-8bc1085e748f]]
@@ -838,29 +840,34 @@ ServerProtocol#stop : Server → None :≡ λserver.server#protocol_stop()
 
 ServerState :≡ Any
 
+
 NextState :≡ ServerState
+
 
 Request :≡ Any
 
+
 Reply :≡ Any
+
 
 Reply satisfies the JsonProtocol.
 
-Client :≡ ServerState Request → Ok(Request) | Error(String)
 
-Server :≡ ServerState Request Reply NextState → Ok(Reply × NextState) | Error(String)
-
-Contract#mk : Client Server → Contract
-
-contract :≡ Contract#mk client server
-
-contract#client(state request) :≡ client(state request)
-
-contract#server(state request reply next-state) :≡ server(state request reply next-state)
+Contract :≡ ServerState → Request → (Reply × NextState) → Contract
 
 **** build
 
 [[ref:81169118-7f98-4509-a9ca-2fbf997247d1]]
+
+**** example
+
+contract :≡ λstate.↓
+- match state
+  - 'idle → λrequest.↓
+    - match request
+      - "hello" → λreply.↓
+        - match reply
+          - <"world",'idle> → contract
 
 *** graph_contract
 :PROPERTIES:
@@ -947,27 +954,50 @@ stdout to communicate with the client?
 :END:
 **** specify
 
-ContractLoop#mk : Contract Any → ContractLoop :≡ λcontract,server.↓
-- init :≡ λdata.↓
-  1) ServerProtocol#start(server data)
-  2) ServerProtocol#state(server)
+Server :≡ Anything that satisfies the ServerProtocol ≡: SP.
 
-- tx :≡ λstate,request.↓
-  - match contract#client(state request) ↓
-    - Error(string) → <Error("Client error. error = #{string}"), state>
-    - Ok(request) → ↓
-      - try ↓
-        - <reply, next_state> :≡ ServerProtocol#rcv(server request)
-        - match contract#server(state request reply next_state) ↓
-          - Error(string) → <Error("Server error. error = #{string}"), state>
-          - Ok(response) → response
-      - catch e ↓
-        - <Error("server error. error = #{e}"), state>
-- Loop#mk init tx
+
+cl : ContractLoop is a Loop such that each requests from the client and responses
+from the server are checked by the contract, assigning blame if not satisfied.
+
+
+_init_mk : Server → Date → State :≡ λserver.↓
+1) SP#start server
+2) SP#state server
+
+
+_tx_mk : Contract Server → (State Request → Reply State) :≡ λcontract,server.↓
+1) tx state request :≡
+   - match contract(state)
+     - ∅ → <Error#mk(…), state>
+     - check →
+       - match check(request)
+         - ∅ → <Error#mk(…), state>
+         - check →
+           1) response :≡ server#read()
+           2) match check(response)
+              - ∅ → <Error#mk(…), state>
+              - contract → response
+2) tx
+
+
+ContractLoop#mk : Contract Server → ContractLoop :≡ λcontract,server.↓
+- Loop#mk _init_mk(server) _tx_mk(contract server)
 
 **** build
 
 [[ref:3a3ba30f-1cca-4c66-ac0d-c00c03ec02ce]]
+
+**** discuss
+***** TODO specify match semantics
+
+#+begin_comment
+f x :≡
+- match x:
+    - "match" → "match"
+
+by definition of match, f "do not match" :≡ ∅
+#+end_comment
 
 *** DiGraph
 :PROPERTIES:

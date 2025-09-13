@@ -3,51 +3,48 @@
 # Context
 
 from loop import Loop
-from ok import Ok
 from error import Error
 from server_protocol import ServerProtocol as SP
 
 
-class ContractLoop:
-    def _init(self, data):
-        server = self._server
+def _init_mk(server):
+    def init(data):
         SP.start(server, data)
         return SP.state(server)
 
-    def _tx(self, state, request):
-        contract = self._contract
-        server = self._server
+    return init
 
-        match contract.client(state, request):
-            case Error(string):
-                return (Error(f"Client error. error = {string}"), state)
 
-            case Ok(request):
-                try:
-                    reply, next_state = SP.rcv(server, request)
-                    match contract.server(state, request, reply, next_state):
-                        case Error(string):
-                            # TODO: stderr?
-                            return (Error.mk(f"Server error. error = {string}"), state)
+def _tx_mk(contract, server):
+    contract_closure = contract
 
-                        case Ok(response):
-                            return response
+    def tx(state, request):
+        nonlocal contract_closure
 
-                except Exception as e:
-                    return (Error.mk(f"Server error. error = {e}"), state)
+        msg = f"Server#state() = {state}. "
+        if (check := contract_closure.value(state)) is None:
+            msg += "Server error. Unexpected state."
+            return (Error(msg), state)
 
-    def __init__(self, contract, server):
-        self._contract = contract
-        self._server = server
-        init = lambda data: self._init(data)
-        tx = lambda state, request: self._tx(state, request)
-        self._loop = Loop.mk(init, tx)
+        msg += f"request = {request}. "
+        if (check := check(request)) is None:
+            msg += "Request error. Unexpected request."
+            return (Error(msg), state)
 
+        response = SP.rcv(server, request)
+        msg += f"response = {response}. "
+        if (contract_closure := check(response)) is None:
+            msg += "Server error. Unexpected response."
+            return (Error(msg), state)
+
+        return response
+
+    return tx
+
+
+class ContractLoop(Loop):
     # Interface
 
     @classmethod
     def mk(cls, contract, server):
-        return cls(contract, server)
-
-    def start(self, data):
-        self._loop.start(data)
+        return cls(_init_mk(server), _tx_mk(contract, server))

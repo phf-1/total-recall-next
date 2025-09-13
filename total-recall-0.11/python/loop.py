@@ -9,6 +9,11 @@ import sys
 import traceback
 
 
+def _send_reply(reply):
+    sys.stdout.write(JsonProtocol.string(reply) + "\n")
+    sys.stdout.flush()
+
+
 class Loop:
     EOF = ""
 
@@ -31,7 +36,16 @@ class Loop:
                 string = sys.stdin.readline().strip()
                 if string == self.EOF:
                     break
-                message = json.loads(string)
+
+                try:
+                    message = json.loads(string)
+                except json.JSONDecodeError:
+                    reply = Error.mk(
+                        f"message is not a JSON string. message = {string}"
+                    )
+                    _send_reply(reply)
+                    continue
+
                 reply, state = tx(state, message)
 
             except KeyboardInterrupt:
@@ -48,5 +62,4 @@ class Loop:
                 }
                 reply = Error.mk(error_info)
 
-            sys.stdout.write(JsonProtocol.string(reply) + "\n")
-            sys.stdout.flush()
+            _send_reply(reply)

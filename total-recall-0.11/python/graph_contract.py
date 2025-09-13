@@ -5,7 +5,6 @@
 from contract import Contract
 from utils import is_str, list_of
 from ok import Ok
-from error import Error
 from degraded import Degraded
 
 
@@ -55,40 +54,52 @@ def _is_rests(x):
     return list_of(x, _is_rest)
 
 
-def _client(state, request):
-    match (state, request):
-        case (None, sort) if _is_sort(sort):
-            return Ok.mk(sort)
-
-        case _:
-            return Error.mk(f"Unexpected request. request = {request}")
+def _is_ok(x):
+    return isinstance(x, Ok)
 
 
-def _server(state, request, reply, next_state):
-    match (state, request):
-        case (None, sort) if _is_sort(sort):
-            match (reply, next_state):
-                case (Ok(nodes), None) if _is_nodes(nodes):
-                    return Ok.mk((reply, next_state))
+def _is_degraded(x):
+    return isinstance(x, Degraded)
 
-                case (Degraded((nodes, rests)), None) if _is_nodes(nodes) and _is_rests(
-                    rests
-                ):
-                    return Ok.mk((reply, next_state))
 
-                case _:
-                    msg = "Unexpected reply and/or next_state."
-                    msg += f" reply = {reply}."
-                    msg += f" next_state = {next_state}"
-                    return Error.mk(msg)
+def _is_ok_nodes(x):
+    return _is_ok(x) and _is_nodes(x.value)
 
-        case _:
-            msg = "The server cannot be in this state and receive this request."
-            msg += f" state = {state}."
-            msg += f" request = {request}."
-            raise AssertionError(msg)
+
+def _is_degraded_nodes(x):
+    if _is_degraded(x):
+        match x.value:
+            case (nodes, rests):
+                return _is_nodes(nodes) and _is_rests(rests)
+
+    return False
+
+
+def _contract(state):
+    match state:
+        case None:
+
+            def _check_request(request):
+                match request:
+                    case sort if _is_sort(sort):
+
+                        def _check_response(response):
+                            match response:
+                                case (reply, next_state) if (
+                                    _is_ok_nodes(reply) and next_state is None
+                                ):
+                                    return Contract.mk(_contract)
+
+                                case (reply, next_state) if (
+                                    _is_degraded_nodes(reply) and next_state is None
+                                ):
+                                    return Contract.mk(_contract)
+
+                        return _check_response
+
+            return _check_request
 
 
 # Interface
 
-graph_contract = Contract.mk(_client, _server)
+graph_contract = Contract.mk(_contract)

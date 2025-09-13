@@ -3,22 +3,15 @@
 # Context
 
 from dataclasses import dataclass
-from error import Error
-from ok import Ok
-from typing import Any, Callable
-
-State = Any
-Request = Any
-Reply = Any
+from typing import Callable
 
 
 @dataclass
 class Contract:
-    client: Callable[[State, Request], Ok | Error]
-    server: Callable[[State, Request, Reply, State], Ok | Error]
+    value: Callable
 
     # Interface
 
     @classmethod
-    def mk(cls, client, server):
-        return cls(client, server)
+    def mk(cls, value):
+        return cls(value)
