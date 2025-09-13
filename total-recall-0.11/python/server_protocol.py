@@ -1,4 +1,5 @@
 # :ID: 1dfa3036-145f-4c7f-9de1-5e74bccfc8ef
+# :REF: 44eafef4-4db1-4fff-be14-b346a2f1b01b
 
 # Context
 
@@ -6,12 +7,13 @@ from operator import methodcaller
 
 
 class ServerProtocol:
-    START = "server_start"
-    RCV = "server_rcv"
-    STATE = methodcaller("server_state")
-    STOP = methodcaller("server_stop")
 
     # Interface
+
+    START = "server_start"
+    RCV = "server_rcv"
+    STATE = "server_state"
+    STOP = "server_stop"
 
     @classmethod
     def start(cls, server, data):
@@ -25,8 +27,10 @@ class ServerProtocol:
 
     @classmethod
     def state(cls, server):
-        return cls.STATE(server)
+        call = methodcaller(cls.STATE)
+        return call(server)
 
     @classmethod
     def stop(cls, server):
-        cls.STOP(server)
+        call = methodcaller(cls.STOP)
+        call(server)

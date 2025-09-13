@@ -13,10 +13,10 @@ manages "elements" (i.e., definitions and exercises) stored in Org files under
 Elements are sorted based on dependencies (e.g., if element A requires element B,
 element B is presented first). If circular dependencies are detected, they are
 eliminated as a fallback mechanism and the cycles are presented to be manually
-removed.
+removed. Element selection uses historical data to optimize review frequency: easier
+elements are shown less often.
 
-Element selection uses historical data to optimize review frequency: easier elements
-are shown less often. Given that type values are configurable, a definition has the
+Given that type values are configurable, a definition has the
 form:
 
 #+begin_src org
@@ -47,26 +47,27 @@ Content. The name of the headline is arbitrary.
 Content. The name of the headline is arbitrary.
 #+end_src
 
-The remaining of the document provide the program specification and current
-discussions.
+* TODO Installation
+
+MELPA
+
+* TODO Usage
 
 * Specification
 
-Python code provides interfaces used for quantitative computations /e.g./ ordering and
-selecting elements. Emacs Lisp code provides everything else.
+This section specifies the program. Python code provides interfaces used for
+quantitative computations /e.g./ ordering and selecting elements. Emacs Lisp code
+provides everything else /e.g./ the UI.
 
 « Objects » are specified in =specify= sections while candidate implementations are
 provided in =build= sections. Other sections like =discuss=, =test= or =prove= are
 self-explanatory.
 
-UUIDs are used to identifies various elements while references are used to reference
-them. The =Tools= section provides Emacs Lisp tools such that a click on a reference
-searches for the matching ids and reciprocally.
-
 ** Emacs Lisp
 *** Utils
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       a8b1ee2d-6a1a-441e-a3f0-7681f9091032
 :END:
 **** specify
 
@@ -150,10 +151,6 @@ state 'run. When timeout is exhausted, raise an error.
 ***** uuid-re : RegEx
 ***** uuid-re-strict : RegEx
 
-**** build
-
-[[ref:253f2cf4-3b7d-42a4-b841-1f6dbc52bdfe]]
-
 *** Env
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
@@ -165,6 +162,7 @@ Env :≡ "prod" | "dev" | "test"
 *** Logger
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 065a3037-8cb1-44f3-8070-7c5b3c96015b
 :END:
 **** specify
 
@@ -182,15 +180,10 @@ logger#error : String → Nil
 only prints errors. If env = "test", then only prints errors. If env = "dev", then
 print all messages.
 
-**** build
-
-[[ref:a0e557e8-87f8-4970-a423-adea9435f934]]
-
 *** Actor
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
 :END:
-
 **** specify
 
 Actor#mk : Logger … → Actor
@@ -204,6 +197,7 @@ send(actor msg) → logger#debug(msg)
 *** Clock
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       d9892346-2b6b-4ceb-9da9-00de63d5e6ee
 :END:
 **** specify
 
@@ -215,13 +209,10 @@ clock is an Actor.
 
 now : Epoch :≡ clock#now(). now is the time at call time.
 
-**** build
-
-[[ref:712feead-c9ee-4dad-830a-0181ab4082d5]]
-
 *** Io
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: a5fdf3d6-a742-418f-9af6-8e83cf2bcef6
 :END:
 **** specify
 
@@ -238,10 +229,6 @@ io#buffer : String → Io
 io#buffer(msg) writes the msg to the buffer named after ~name~ and returns self
 
 io#buffer-name() = name of the associated buffer built from input name
-
-**** build
-
-[[ref:b4ab8208-e1b2-4468-8a4f-db373d7d556f]]
 
 *** Report
 :PROPERTIES:
@@ -261,13 +248,10 @@ report#add(line) adds line to the accumulated lines so far
 
 report#string() : String :≡ the concatenation of all accumulated lines.
 
-**** build
-
-[[ref:d6adcba5-5f9a-42ae-b8f9-dd627d6c10f4]]
-
 *** Conf
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 656ec911-0225-415d-abf0-4e760bc782f1
 :END:
 **** specify
 
@@ -279,13 +263,10 @@ conf :≡ Configuration#mk()
 
 All values are derived from the environment.
 
-**** build
-
-[[ref:d9e6a76c-0233-409c-993a-3cd6ad4333af]]
-
 *** Rating
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 168a29cc-9c72-4e31-b619-8a8cb5b37c0a
 :END:
 **** specify
 
@@ -304,10 +285,6 @@ Rating#skip :≡ λepoch,uuid.Rating#mk epoch uuid :skip
 rating :≡ Rating#mk(epoch id value)
 
 rating#data() :≡ [epoch, id, value]
-
-**** build
-
-[[ref:72db9687-443c-45ba-a40c-d99909a8006a]]
 
 *** Exercise
 :PROPERTIES:
@@ -338,13 +315,10 @@ exercise#question() = question
 
 exercise#answer() = answer
 
-**** build
-
-[[ref:5ee57d9b-958e-4b6e-a62f-1c0b06a0f4d9]]
-
 *** Definition
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       64dc5603-95db-44fd-a37a-46ad390be8e7
 :END:
 **** specify
 
@@ -366,13 +340,10 @@ definition#path() = name
 
 definition#content() = content
 
-**** build
-
-[[ref:297c1e4b-3fcc-4e35-887e-442ca564f8c6]]
-
 *** Searcher
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 397d808c-4438-45fa-9ff6-3db404e99dd2
 :END:
 **** specify
 
@@ -393,13 +364,10 @@ search is an Actor
 searcher#files() : List(Path) :≡ list of absolute org file paths under root that
 contain at least one occurrence of defid or exid.
 
-**** build
-
-[[ref:674f7b2d-6b75-4df0-a431-5c574586a871]]
-
 *** Parser
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 5c51b191-f640-434a-a194-a432ee2e967f
 :END:
 **** specify
 
@@ -421,10 +389,6 @@ parser#parse : List(OrgFile) → List([[ref:d6b90764-fff1-4bd6-909a-322912b0da73
 ***** Headline → 'ok × ExData | 'error × String
 
 [[file:dot/parser.dot]]
-
-***** ■
-
-[[ref:5d5fec94-de66-4530-8267-a7f26ae03f2b]]
 
 *** Selector
 :PROPERTIES:
@@ -448,10 +412,6 @@ selector#select : List(UUID) → List(UUID)
 selected :≡ selector#select uuids
 
 selected properties are derived from the underlying server.
-
-**** build
-
-[[ref:ecfaf421-0c40-4a47-b5c9-26155acf9986]]
 
 *** Graph
 :PROPERTIES:
@@ -480,13 +440,10 @@ graph#sort : Nodes Edges → 'ok × Nodes | 'error × String
 
 sorted-nodes properties are derived from the underlying server.
 
-**** build
-
-[[ref:5c711ef1-d575-46d3-bc4c-770dd7f7157b]]
-
 *** Scheduler
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID:       f7e13fe3-4ff0-4ebc-8dcc-78c6e8df3516
 :END:
 **** specify
 
@@ -503,8 +460,6 @@ exercises is a sub-list of exs, each one selected by ~selector~ and ordered usin
 **** build
 
 [[file:dot/scheduler.dot]]
-
-[[ref:dad9af0f-18ea-4ad2-9105-bd00fdc21c72]]
 
 *** Db
 :PROPERTIES:
@@ -524,14 +479,6 @@ db#stop() : Self
 db#save : Rating → Self
 
 db#ratings : UUID → List(Rating)
-
-**** build
-
-[[ref:3020d2a5-face-4348-b05d-e8755d7c6195]]
-
-**** test
-
-[[ref:d31af193-988e-49b3-93db-08c41266bf84]]
 
 *** Ui
 :PROPERTIES:
@@ -554,13 +501,10 @@ ui is an Actor
 
 ui#show : Exercise UserInputs → 'stop | 'skip | 'success | 'failure
 
-**** build
-
-[[ref:071782c8-7575-4678-8090-9e8abaad044c]]
-
 *** Reviewer
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 088be4f0-e515-4501-b6f7-28201d1d0713
 :END:
 **** specify
 
@@ -572,12 +516,9 @@ reviewer is an Actor
 
 reviewer#start : UserInputs → [[ref:05a4ce8c-583a-43d2-9dde-af32164d1a97][Report]]
 
-**** build
-
-[[ref:9d1ca161-acfa-48b8-bf55-b0f6e97d8d48]]
-
 *** total-recall
 :PROPERTIES:
+:TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
 :ID:       9030fde9-f7fc-4c83-a54b-41fd1a9872d7
 :END:
 **** TODO specify
@@ -591,10 +532,6 @@ review session, meaning:
 3. The user has been informed of their performance by a [[ref:4187a5b0-15c1-49fc-9962-7dd5802e4f25][report]] written to the [[ref:2076d556-ee35-4db7-bd58-887bc5a1c254][io]] of
    Emacs.
 
-**** build
-
-[[ref:4c292e22-4b9a-4cb2-8867-17fa1eabf024]]
-
 *** package
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
@@ -604,20 +541,11 @@ review session, meaning:
 
 package : [[info:elisp#Multi-file Packages][elisp#Multi-file Packages]]
 
-**** build
-
-[[ref:d6b16712-062a-44aa-82ce-893b5267906f]]
-
-**** test
-
-#+begin_src bash
-make test-package
-#+end_src
-
 ** Python
 *** Configuration
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: dd62b36a-0c72-4e49-bef9-f02feec16ac4
 :END:
 **** specify
 
@@ -630,13 +558,10 @@ user.
 
 After conf, Python executes in UTF-8 mode and the environment is read.
 
-**** build
-
-[[ref:25974f54-a9f9-4429-b199-b43dbebcac1a]]
-
 *** Mark
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: c561f394-58e8-48a9-a2fe-0ce8bbbc73ad
 :END:
 **** specify
 
@@ -656,13 +581,10 @@ Mark#string : Mark → String
 
 Mark#from_string(Mark#string(m)) = m
 
-**** build
-
-[[ref:9c974443-0cfb-47e7-8b54-b29b16b85f53]]
-
 *** Time
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 00d5252c-a7d7-4ba5-82a7-7cc7df315994
 :END:
 **** specify
 
@@ -672,13 +594,10 @@ time :≡ Time#mk s where s is an ISO8601 UTC string
 
 time#string() : String :≡ s
 
-**** build
-
-[[ref:707bd668-327f-463a-82fb-eff4592fd962]]
-
 *** Identifier
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: c739cc33-3efc-43bd-9c2c-6bb13af09720
 :END:
 **** specify
 
@@ -693,25 +612,19 @@ identifier :≡ Identifier#mk(s)
 
 identifier#string() : String :≡ s
 
-**** build
-
-[[ref:3bc7bf47-0c5f-4a15-9c8d-0bfbbea66ee2]]
-
 *** JsonProtocol
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: a9530b61-915e-4e0f-8fac-077b12a7399e
 :END:
 **** specify
 
 JsonProtocol#string : Any → String :≡ λx.x#json_string()
 
-**** build
-
-[[ref:4deef454-284f-43d7-adfe-9a4bd85ffe67]]
-
 *** Error
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: d1ff1c40-a6e6-4054-afbe-71fb2b77eba2
 :END:
 **** specify
 
@@ -720,13 +633,10 @@ Error#mk : Any → Error :≡ λany.↓
 
 Instances of Error implement JsonProtocol.
 
-**** build
-
-[[ref:2c0468fa-8fbd-48f1-83c5-d9321cb6f1ad]]
-
 *** Ok
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 2a4529d8-85b7-4b74-928f-fc1506800855
 :END:
 **** specify
 
@@ -735,13 +645,10 @@ Ok#mk : Any → Ok :≡ λany.↓
 
 Instances of Ok implement JsonProtocol.
 
-**** build
-
-[[ref:69708334-a624-4bc8-8c90-9f3ad659f158]]
-
 *** Nothing
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 37efa605-0395-405a-b116-bc793f8f90cc
 :END:
 **** specify
 
@@ -751,13 +658,10 @@ nothing :≡ Nothing#mk()
 
 ∅ :≡ nothing
 
-**** build
-
-[[ref:2ff19f9b-1895-4fd6-b76d-8bc1085e748f]]
-
 *** Just
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: ba431f41-cef6-4074-97cc-d4e136850c22
 :END:
 **** specify
 
@@ -765,25 +669,19 @@ Just#mk : Any → Just
 
 just :≡ Just#mk
 
-**** build
-
-[[ref:bfff70b0-755a-4d3c-907f-7d7de4e7a76f]]
-
 *** Maybe
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 796fd86e-b841-406e-8c17-1163e31fcbd1
 :END:
 **** specify
 
 Maybe :≡ Nothing | Just(Any)
 
-**** build
-
-[[ref:27952cb2-ad3a-40ad-841b-a8020c606b84]]
-
 *** Degraded
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 09eb65d7-a704-4b54-bfdf-d994d4629fc6
 :END:
 **** specify
 
@@ -791,10 +689,6 @@ Degraded#mk : Any → Degraded :≡ λany.↓
 - if any implements JsonProtocol, return Degraded#mk(any)
 
 Instances of Degraded implement JsonProtocol.
-
-**** build
-
-[[ref:66c46343-bc91-497b-8e4a-f605cf4b4423]]
 
 *** ServerProtocol
 :PROPERTIES:
@@ -822,13 +716,10 @@ ServerProtocol#state : Server → State :≡ λserver.server#protocol_state()
 
 ServerProtocol#stop : Server → None :≡ λserver.server#protocol_stop()
 
-**** build
-
-[[ref:1dfa3036-145f-4c7f-9de1-5e74bccfc8ef]]
-
 *** Contract
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: dabad7f3-e4b5-4070-9cb9-c224b7482974
 :END:
 **** specify
 
@@ -848,10 +739,6 @@ Reply satisfies the JsonProtocol.
 
 
 Contract :≡ ServerState → Request → (Reply × NextState) → Contract
-
-**** build
-
-[[ref:81169118-7f98-4509-a9ca-2fbf997247d1]]
 
 **** example
 
@@ -892,13 +779,10 @@ server : Any Any Any Any → Error(String)
 
 graph_contract :≡ Contract#mk client server
 
-**** build
-
-[[ref:fb305ce8-0516-4f48-825b-105b2704d6e9]]
-
 *** Loop
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 389a2c5d-6738-4bf5-9f4b-de9b111faa9b
 :END:
 **** specify
 
@@ -931,12 +815,7 @@ loop#start : Any → Nil :≡ λdata.↓
     - reply :≡ Error(e)
   - write JsonProtocol#string(reply) + '\n' to stdout
 
-**** build
-
-[[ref:27de3cd6-e4b0-4621-8ab9-f85bb86f17b6]]
-
 **** discuss
-
 ***** TODO logging to stderr?
 
 stderr to communicate with the system, i.e., syslog
@@ -945,6 +824,7 @@ stdout to communicate with the client?
 *** ContractLoop
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 328a7ee3-e5bb-4578-8b56-cbf3164faab9
 :END:
 **** specify
 
@@ -977,10 +857,6 @@ _tx_mk : Contract Server → (State Request → Reply State) :≡ λcontract,ser
 
 ContractLoop#mk : Contract Server → ContractLoop :≡ λcontract,server.↓
 - Loop#mk _init_mk(server) _tx_mk(contract server)
-
-**** build
-
-[[ref:3a3ba30f-1cca-4c66-ac0d-c00c03ec02ce]]
 
 **** discuss
 ***** TODO specify match semantics
@@ -1032,6 +908,7 @@ NDAG :≡ DiGraph with at least one cycle
 *** GraphServer
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
+:ID: 3f6c5b98-842c-459f-80c2-389d1acce88f
 :END:
 **** specify
 
@@ -1061,17 +938,14 @@ server#server_stop() : Nil :≡ λ.Nil
 
 GraphServer satisfies ServerProtocol and implements graph_contract.
 
-**** build
-
-[[ref:4ec52b7d-39e5-4179-aeb3-1ad5aac8c1c0]]
-
 *** DBPath
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
 :END:
 **** specify
 
-DBPath :≡ Path to a sqlite3 database with table exercise_log of schema Mark#string() Identifier#string() Time#string()
+DBPath :≡ Path to a sqlite3 database with table exercise_log of schema Mark#string()
+Identifier#string() Time#string()
 
 *** Row
 :PROPERTIES:
@@ -1090,10 +964,6 @@ row#id() : Identifier :≡ id
 
 row#time() : Time :≡ time
 
-**** build
-
-[[ref:79a21c29-0a23-456f-89a1-e26f31dff74e]]
-
 *** Db
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
@@ -1108,10 +978,6 @@ db :≡ Db#mk path
 db#rows() : List(Row)
 
 db#rows : Identifier → List(Row) :≡ λid. filter λrow.row#id() = id db#rows()
-
-**** build
-
-[[ref:570c7719-f2e3-4961-bdb5-8ba1db753c39]]
 
 *** selector_contract
 :PROPERTIES:
@@ -1136,10 +1002,6 @@ server : Any Any Any Any → Error(String)
 
 selector_contract :≡ Contract#mk client server
 
-**** build
-
-[[ref:f0ac51ae-05cb-4748-a469-1802e651b58b]]
-
 *** SelectorServer
 :PROPERTIES:
 :TYPE: f590edb9-5fa3-4a07-8f3d-f513950d5663
@@ -1163,14 +1025,14 @@ server#server_stop() : Nil :≡ λ.Nil
 
 SelectorServer satisfies ServerProtocol and implements selector_contract.
 
-**** build
-
-[[ref:7e2cce5b-9c3d-41c0-9e62-c43334f0d120]]
-
 ** Tools
+*** locs-and-refs
+
+Implementations and specifications are identified using UUIDs as defined by
+[[https://melpa.org/#/locs-and-refs][locs-and-refs]]. An implementation may reference its specification using a reference.
+
 * discuss
 ** TODO user is informed after cycles are detected
-** TODO Tools are provided
 ** TODO TODOs are fixed
 ** TODO Published in MELPA
 ** TODO ndjson ?
