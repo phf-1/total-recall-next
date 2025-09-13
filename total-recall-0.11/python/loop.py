@@ -46,20 +46,21 @@ class Loop:
                     _send_reply(reply)
                     continue
 
-                reply, state = tx(state, message)
+                try:
+                    reply, state = tx(state, message)
+                except Exception as e:
+                    exc_type = type(e).__name__
+                    exc_message = str(e)
+                    exc_traceback = traceback.format_exc().strip().split("\n")
+                    error_info = {
+                        "type": exc_type,
+                        "message": exc_message,
+                        "traceback": exc_traceback,
+                    }
+                    msg = f"Server error. error = {error_info}"
+                    reply = Error.mk(msg)
 
             except KeyboardInterrupt:
                 break
-
-            except Exception as e:
-                exc_type = type(e).__name__
-                exc_message = str(e)
-                exc_traceback = traceback.format_exc().strip().split("\n")
-                error_info = {
-                    "type": exc_type,
-                    "message": exc_message,
-                    "traceback": exc_traceback,
-                }
-                reply = Error.mk(error_info)
 
             _send_reply(reply)
